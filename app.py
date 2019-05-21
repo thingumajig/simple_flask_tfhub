@@ -1,22 +1,31 @@
 #!flask/bin/python
 from flask import Flask, jsonify, request, make_response, abort, g
+from tfhub_context import TFHubContext, ElmoTFHubContext
+from collections import defaultdict
+import nltk
+from nltk.tokenize import sent_tokenize
 
-import tensorflow as tf
-import tensorflow_hub as hub
-import numpy as np
-from tfhub_context import TFHubContext
+nltk.download('punkt')
 
 app = Flask(__name__)
-embedding_context = None
+embedding_context = {}
 
 
-def get_ec() -> TFHubContext:
+def get_ec(ctype) -> TFHubContext:
   global embedding_context
-  if embedding_context is None:
+  ec = embedding_context.get(ctype, None)
+  if ec is None:
     print('Creating new TFHubContext!')
-    embedding_context = TFHubContext()
+    if ctype == 'elmo':
+      ec = ElmoTFHubContext(type='default')
+    else:
+      if ctype == 'use':
+        ec = TFHubContext()
+      else:
+        abort(400)
+    embedding_context[ctype] = ec
 
-  return embedding_context
+  return embedding_context[ctype]
 
 # @app.teardown_appcontext
 # def teardown_ec(error):
@@ -32,8 +41,8 @@ def hello():
   return jsonify({'version': '1.0'})
 
 
-@app.route('/use/api/v1.0/use-sentence', methods=['POST','GET'])
-def get_sentence_encoding():
+@app.route('/use/api/v1.0/sentence/<ctype>', methods=['POST','GET'])
+def get_sentence_emb(ctype):
   sentence = None
 
   if request.args:
@@ -52,9 +61,40 @@ def get_sentence_encoding():
   if not sentence:
     abort(400)
 
-  emb_tensor = get_ec().get_embedding([sentence])[0].tolist()
+  emb_tensor = get_ec(ctype).get_embedding([sentence])[0].tolist()
 
   return jsonify({'embedings': emb_tensor})
+
+@app.route('/use/api/v1.0/text/<ctype>', methods=['POST','GET'])
+def get_text_emb(ctype):
+  text = None
+
+  if request.args:
+    text = request.args.get('text', None)
+
+  if not text and request.form:
+    try:
+      text = request.form['text']
+    except:
+      text = None
+
+  if not text and request.json:
+    text = request.json.get('text', None)
+
+  if not text:
+    abort(400)
+
+  # sent_tokenizer = nltk.tokenize.PunktSentenceTokenizer()
+  # sentences = sent_tokenizer.tokenize(text)
+  sentences = sent_tokenize(text)
+
+  emb_tensor = get_ec(ctype).get_embedding(sentences)
+
+  json = {}
+  for i in range(0, len(sentences)):
+    json[f'sentence_{i}'] = {'sentence': sentences[i], 'embedding': emb_tensor[i].tolist()}
+
+  return jsonify(json)
 
 
 
