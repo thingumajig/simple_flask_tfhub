@@ -1,4 +1,6 @@
 #!flask/bin/python
+import os
+
 from flask import Flask, jsonify, request, make_response, abort, g
 from tfhub_context import TFHubContext, ElmoTFHubContext
 from collections import defaultdict
@@ -107,5 +109,9 @@ def not_found(error):
 def bad_request(error):
     return make_response(jsonify({'error': 'BadRequest', 'errorCode': str(error)}), 400)
 
+
 if __name__ == '__main__':
-  app.run(debug=True, port=5000)
+  app.run(
+    host=os.getenv('LISTEN', '0.0.0.0'),
+    port=int(os.getenv('PORT', '8080')),
+    debug=True)
