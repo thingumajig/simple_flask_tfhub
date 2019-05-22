@@ -7,7 +7,8 @@ WantedBy=multi-user.target
 [Service]
 User=ubuntu
 PermissionsStartOnly=true
-ExecStart=/home/ubuntu/simple_flask_tfhub/app.py
+WorkingDirectory=/home/ubuntu/simple_flask_tfhub/
+ExecStart=/usr/bin/python3 /home/ubuntu/simple_flask_tfhub/app.py
 TimeoutSec=600
 Restart=on-failure
 RuntimeDirectoryMode=755
