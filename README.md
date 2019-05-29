@@ -2,17 +2,23 @@
 universal sentence encoder as microservice
 
 ## usage
-ELMO:
+ELMO(size 1024):
 ```
 curl -i -H "Content-Type: application/json" -X POST -d '@test_data.json' http://localhost:8080/use/api/v1.0/text/elmo
 ```
-Universal Sentence Encoding:
+Universal Sentence Encoding(size 512):
 ```
 curl -i -H "Content-Type: application/json" -X POST -d '@test_data.json' http://localhost:8080/use/api/v1.0/text/use
 ```
 ```
 curl -i -H "Content-Type: application/json" -X POST -d '@test_data.json' http://xxxxx.compute.amazonaws.com:8080/use/api/v1.0/text/use
 ```
+
+Send file:
+```
+curl -i  -H "Content-Type: multipart/form-data" -X POST -F text=@test_file.txt http://localhost:8080/use/api/v1.0/text/use
+```
+
 ## service commands
 ### service configuration
 ```
