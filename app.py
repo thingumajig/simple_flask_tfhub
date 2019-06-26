@@ -6,8 +6,13 @@ from tfhub_context import TFHubContext, ElmoTFHubContext
 from collections import defaultdict
 import nltk
 from nltk.tokenize import sent_tokenize
+import re
+
+import random
+random.seed(42)
 
 nltk.download('punkt')
+tokenizer = nltk.load('tokenizers/punkt/english.pickle')
 
 app = Flask(__name__)
 embedding_context = {}
@@ -49,6 +54,12 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         # Create an index range for l of n items:
         yield l[i:i+n]
+
+def filter_by_len(l, limit):
+  for sent in l:
+    if len(sent) < limit:
+      yield sent
+
 
 # @app.teardown_appcontext
 # def teardown_ec(error):
@@ -114,17 +125,22 @@ def get_text_emb(ctype):
   if not text:
     abort(400)
 
-  # sent_tokenizer = nltk.tokenize.PunktSentenceTokenizer()
-  # sentences = sent_tokenizer.tokenize(text)
-  sentences = sent_tokenize(text) 
-
   json = {}
   k = 0
-  for chunk in chunks(sentences, BATCH_SIZE):
-    emb_tensor = get_ec(ctype).get_embedding(chunk)
-    for i in range(0, len(chunk)):
-      json[f'sentence_{k}'] = {'sentence': chunk[i], 'embedding': emb_tensor[i].tolist()}
-      k += 1
+
+  texts = re.split('\n{3,}', text)
+
+  for t in texts:
+    # sent_tokenizer = nltk.tokenize.PunktSentenceTokenizer()
+    # sentences = sent_tokenizer.tokenize(text)
+    # sentences = sent_tokenize(text)
+    sentences = list(filter_by_len(tokenizer.tokenize(t), 600))
+
+    for chunk in chunks(sentences, BATCH_SIZE):
+      emb_tensor = get_ec(ctype).get_embedding(chunk)
+      for i in range(0, len(chunk)):
+        json[f'sentence_{k}'] = {'sentence': chunk[i], 'embedding': emb_tensor[i].tolist()}
+        k += 1
 
 
   return jsonify(json)
@@ -145,4 +161,6 @@ if __name__ == '__main__':
   app.run(
     host=os.getenv('LISTEN', '0.0.0.0'),
     port=int(os.getenv('PORT', '8080')),
-    debug=False)
+    debug=False,
+    threaded=True
+  )
